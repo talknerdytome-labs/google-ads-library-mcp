@@ -51,8 +51,8 @@ Do a deep comparison to the messaging between 'AnthropicAI', 'Perplexity AI' and
 1. **Clone and run the install script**
 
    ```bash
-   git clone https://github.com/trypeggy/facebook-ads-library-mcp.git
-   cd facebook-ads-library-mcp
+   git clone https://github.com/trypeggy/google-ads-library-mcp.git
+   cd google-ads-library-mcp
    
    # For macOS/Linux:
    ./install.sh
@@ -78,8 +78,8 @@ If you prefer to install manually:
 1. **Clone this repository**
 
    ```bash
-   git clone https://github.com/trypeggy/facebook-ads-library-mcp.git
-   cd facebook-ads-library-mcp
+   git clone https://github.com/trypeggy/google-ads-library-mcp.git
+   cd google-ads-library-mcp
    ```
 
 2. **Install dependencies**
@@ -149,8 +149,16 @@ If you prefer to install manually:
 ## Technical Details
 
 1. Claude sends requests to the Python MCP server
-2. The MCP server queries the ScrapeCreator API through tools
+2. The MCP server queries the ScrapeCreators API for Google Ads Transparency Center data
 3. Data flows back through the chain to Claude
+
+### Google Ads vs Facebook Ads
+
+This server now connects to Google's Ads Transparency Center instead of Facebook's Ad Library:
+- **Google Ads**: Uses company domain (e.g., "nike.com") or advertiser ID for search
+- **Response Format**: Returns ads with format types (text/image/video) and detailed variations
+- **Ad Details**: Each ad can have multiple variations with different headlines and descriptions
+- **Regional Data**: Includes region-specific statistics and impression data
 
 ### Available MCP Tools
 
@@ -189,6 +197,12 @@ This MCP server provides tools for interacting with Facebook Ads library objects
 - Restart Claude Desktop/Cursor after configuration changes
 
 For additional Claude Desktop integration troubleshooting, see the [MCP documentation](https://modelcontextprotocol.io/quickstart/server#claude-for-desktop-integration-issues). The documentation includes helpful tips for checking logs and resolving common issues.
+
+**Google Ads Specific Notes:**
+- The server now searches Google Ads Transparency Center instead of Facebook
+- Use company domains (e.g., "nike.com") instead of brand names for searching
+- Text ads are now supported in addition to image and video ads
+- Each ad may have multiple variations with different headlines and descriptions
 
 ---
 

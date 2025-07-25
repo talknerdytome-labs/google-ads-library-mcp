@@ -73,7 +73,7 @@ echo For Claude Desktop (%%APPDATA%%\Claude\claude_desktop_config.json):
 echo.
 echo {
 echo   "mcpServers": {
-echo     "fb_ad_library": {
+echo     "google_ads_library": {
 echo       "command": "python",
 echo       "args": [
 echo         "%MCP_CONFIG_PATH%"
@@ -86,7 +86,7 @@ echo For Cursor (%%USERPROFILE%%\.cursor\mcp.json):
 echo.
 echo {
 echo   "mcpServers": {
-echo     "fb_ad_library": {
+echo     "google_ads_library": {
 echo       "command": "python",
 echo       "args": [
 echo         "%MCP_CONFIG_PATH%"

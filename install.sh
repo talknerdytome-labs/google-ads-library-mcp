@@ -78,7 +78,7 @@ echo
 cat << EOF
 {
   "mcpServers": {
-    "fb_ad_library": {
+    "google_ads_library": {
       "command": "python3",
       "args": [
         "$MCP_CONFIG_PATH"
@@ -94,7 +94,7 @@ echo
 cat << EOF
 {
   "mcpServers": {
-    "fb_ad_library": {
+    "google_ads_library": {
       "command": "python3",
       "args": [
         "$MCP_CONFIG_PATH"

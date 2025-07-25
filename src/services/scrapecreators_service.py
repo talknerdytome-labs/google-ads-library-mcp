@@ -9,8 +9,9 @@ from typing import Dict, Any, List, Optional
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-SEARCH_API_URL = "https://api.scrapecreators.com/v1/facebook/adLibrary/search/companies"
-ADS_API_URL = "https://api.scrapecreators.com/v1/facebook/adLibrary/company/ads"
+# Google Ads API endpoints
+COMPANY_ADS_API_URL = "https://api.scrapecreators.com/v1/google/company/ads"
+AD_DETAILS_API_URL = "https://api.scrapecreators.com/v1/google/ad"
 
 
 SCRAPECREATORS_API_KEY = None
@@ -49,15 +50,15 @@ def get_scrapecreators_api_key() -> str:
     return SCRAPECREATORS_API_KEY
 
 
-def get_platform_id(brand_name: str) -> Dict[str, str]:
+def get_ad_details(ad_url: str) -> Dict[str, Any]:
     """
-    Get the Meta Platform ID for a given brand name.
+    Get detailed information for a specific Google ad.
     
     Args:
-        brand_name: The name of the company or brand to search for.
+        ad_url: The URL of the ad from Google Ads Transparency Center.
     
     Returns:
-        Dictionary mapping brand names to their Meta Platform IDs.
+        Dictionary containing ad details including variations, regions, and impressions.
     
     Raises:
         requests.RequestException: If the API request fails.
@@ -66,212 +67,132 @@ def get_platform_id(brand_name: str) -> Dict[str, str]:
     api_key = get_scrapecreators_api_key()
     
     response = requests.get(
-        SEARCH_API_URL,
+        AD_DETAILS_API_URL,
         headers={"x-api-key": api_key},
         params={
-            "query": brand_name,
+            "url": ad_url,
         },
-        timeout=30  # Add timeout for better error handling
+        timeout=30
     )
     response.raise_for_status()
     content = response.json()
-    logger.info(f"Search response for '{brand_name}': {len(content.get('searchResults', []))} results found")
     
-    options = {}
-    for result in content.get("searchResults", []):
-        name = result.get("name")
-        page_id = result.get("page_id")
-        if name and page_id:
-            options[name] = page_id
+    if not content.get('success'):
+        raise Exception(f"API returned unsuccessful response: {content}")
     
-    return options
+    logger.info(f"Retrieved ad details for {ad_url}")
+    return content
 
 
 def get_ads(
-    page_id: str, 
+    domain: Optional[str] = None,
+    advertiser_id: Optional[str] = None,
+    topic: Optional[str] = None,
+    region: Optional[str] = None,
     limit: int = 50,
-    country: Optional[str] = None,
-    trim: bool = True
-) -> List[Dict[str, Any]]:
+    cursor: Optional[str] = None
+) -> Dict[str, Any]:
     """
-    Get ads for a specific page ID with pagination support.
+    Get ads for a company from Google Ads Transparency Center.
     
     Args:
-        page_id: The Meta Platform ID for the brand.
+        domain: The domain of the company (e.g., "lululemon.com").
+        advertiser_id: The advertiser ID of the company.
+        topic: The topic to search for (e.g., "political").
+        region: The region to search for (required if topic is "political").
         limit: Maximum number of ads to retrieve.
-        country: Optional country code to filter ads (e.g., "US", "CA").
-        trim: Whether to trim the response to essential fields only.
+        cursor: Cursor for pagination.
     
     Returns:
-        List of ad objects with details.
+        Dictionary containing ads list, cursor, and success status.
     
     Raises:
         requests.RequestException: If the API request fails.
         Exception: For other errors.
     """
+    if not domain and not advertiser_id:
+        raise ValueError("Either domain or advertiser_id must be provided")
+    
+    if topic == "political" and not region:
+        raise ValueError("Region is required when searching for political ads")
+    
     api_key = get_scrapecreators_api_key()
-    cursor = None
-    headers = {
-        "x-api-key": api_key
-    }
-    params = {
-        "pageId": page_id,
-        "limit": min(limit, 100)  # Ensure we don't exceed API limits
-    }
+    headers = {"x-api-key": api_key}
     
-    # Add optional parameters if provided
-    if country:
-        params["country"] = country.upper()
-    if trim:
-        params["trim"] = "true"
-
-    ads = []
-    total_requests = 0
-    max_requests = 10  # Allow more requests for comprehensive data
+    params = {}
+    if domain:
+        params["domain"] = domain
+    if advertiser_id:
+        params["advertiser_id"] = advertiser_id
+    if topic:
+        params["topic"] = topic
+    if region:
+        params["region"] = region
+    if cursor:
+        params["cursor"] = cursor
     
-    while len(ads) < limit and total_requests < max_requests:
-        if cursor:
-            params['cursor'] = cursor
+    try:
+        response = requests.get(
+            COMPANY_ADS_API_URL,
+            headers=headers,
+            params=params,
+            timeout=30
+        )
+        response.raise_for_status()
         
-        try:
-            response = requests.get(
-                ADS_API_URL, 
-                headers=headers, 
-                params=params,
-                timeout=30
-            )
-            total_requests += 1
-            
-            if response.status_code != 200:
-                logger.error(f"Error getting FB ads for page {page_id}: {response.status_code} {response.text}")
-                break
-                
-            resJson = response.json()
-            logger.info(f"Retrieved {len(resJson.get('results', []))} ads from API (request {total_requests})")
-            
-            res_ads = parse_fb_ads(resJson, trim)
-            if len(res_ads) == 0:
-                logger.info("No more ads found, stopping pagination")
-                break
-                
-            ads.extend(res_ads)
-            
-            # Get cursor for next page
-            cursor = resJson.get('cursor')
-            if not cursor:
-                logger.info("No cursor found, reached end of results")
-                break
-                
-        except requests.RequestException as e:
-            logger.error(f"Network error while fetching ads: {str(e)}")
-            break
-        except Exception as e:
-            logger.error(f"Error processing ads response: {str(e)}")
-            break
-
-    # Trim to requested limit
-    return ads[:limit]
+        content = response.json()
+        
+        if not content.get('success'):
+            raise Exception(f"API returned unsuccessful response: {content}")
+        
+        # Process ads to limit results
+        ads = content.get('ads', [])
+        if len(ads) > limit:
+            ads = ads[:limit]
+            content['ads'] = ads
+        
+        logger.info(f"Retrieved {len(ads)} Google ads for {domain or advertiser_id}")
+        return content
+        
+    except requests.RequestException as e:
+        logger.error(f"Network error while fetching Google ads: {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"Error processing Google ads response: {str(e)}")
+        raise
 
 
-def parse_fb_ads(resJson: Dict[str, Any], trim: bool = True) -> List[Dict[str, Any]]:
+def parse_google_ads(ads: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
-    Parse Facebook ads from API response.
+    Parse Google ads to extract key information.
     
     Args:
-        resJson: The JSON response from the ScrapeCreators API.
-        trim: Whether to include only essential fields.
+        ads: List of ad objects from Google Ads API.
     
     Returns:
-        List of parsed ad objects.
+        List of parsed ad objects with extracted media URLs.
     """
-    ads = []
-    results = resJson.get('results', [])
-    logger.info(f"Parsing {len(results)} FB ads")
+    parsed_ads = []
     
-    for ad in results:
+    for ad in ads:
         try:
-            ad_id = ad.get('ad_archive_id')
-            if not ad_id:
-                continue
-
-            # Parse dates
-            start_date = ad.get('start_date')
-            end_date = ad.get('end_date')
-
-            if start_date is not None:
-                start_date = datetime.fromtimestamp(start_date).isoformat()
-            if end_date is not None:
-                end_date = datetime.fromtimestamp(end_date).isoformat()
-
-            # Parse snapshot data
-            snapshot = ad.get('snapshot', {})
-            media_type = snapshot.get('display_format')
+            # Google ads structure is already clean, just need to extract media if available
+            ad_obj = {
+                'advertiser_id': ad.get('advertiserId'),
+                'creative_id': ad.get('creativeId'),
+                'format': ad.get('format'),
+                'ad_url': ad.get('adUrl'),
+                'advertiser_name': ad.get('advertiserName'),
+                'domain': ad.get('domain'),
+                'first_shown': ad.get('firstShown'),
+                'last_shown': ad.get('lastShown')
+            }
             
-            # Skip unsupported media types
-            if media_type not in {'IMAGE', 'VIDEO', 'DCO'}:
-                continue
-
-            # Parse body text
-            body = snapshot.get('body', {})
-            if body:
-                bodies = [body.get('text')]
-            else:
-                bodies = []
-
-            # Parse media URLs based on type
-            media_urls = []
-            if media_type == 'IMAGE':
-                images = snapshot.get('images', [])
-                if len(images) > 0:
-                    media_urls = [images[0].get('resized_image_url')]
-
-            elif media_type == 'VIDEO':
-                videos = snapshot.get('videos', [])
-                if len(videos) > 0:
-                    media_urls = [videos[0].get('video_sd_url')]
-
-            elif media_type == 'DCO':
-                cards = snapshot.get('cards', [])
-                if len(cards) > 0:
-                    media_urls = [card.get('resized_image_url') for card in cards]
-                    bodies = [card.get('body') for card in cards]
+            # For detailed analysis, we'll need to call get_ad_details with the ad_url
+            parsed_ads.append(ad_obj)
             
-            # Skip if no media or body content
-            if len(media_urls) == 0 or len(bodies) == 0:
-                continue
-
-            # Create ad objects
-            for media_url, body_text in zip(media_urls, bodies):
-                if media_url is not None and body_text:
-                    ad_obj = {
-                        'ad_id': ad_id,
-                        'start_date': start_date,
-                        'end_date': end_date,
-                        'media_url': media_url,
-                        'body': body_text,
-                        'media_type': media_type
-                    }
-                    
-                    # Add additional fields if not trimming
-                    if not trim:
-                        ad_obj.update({
-                            'page_id': ad.get('page_id'),
-                            'page_name': ad.get('page_name'),
-                            'currency': ad.get('currency'),
-                            'funding_entity': ad.get('funding_entity'),
-                            'impressions': ad.get('impressions'),
-                            'spend': ad.get('spend'),
-                            'disclaimer': ad.get('disclaimer'),
-                            'languages': ad.get('languages'),
-                            'publisher_platforms': ad.get('publisher_platforms'),
-                            'platform_positions': ad.get('platform_positions'),
-                            'effective_status': ad.get('effective_status')
-                        })
-                    
-                    ads.append(ad_obj)
-                    
         except Exception as e:
-            logger.error(f"Error parsing ad {ad.get('ad_archive_id', 'unknown')}: {str(e)}")
+            logger.error(f"Error parsing Google ad {ad.get('creativeId', 'unknown')}: {str(e)}")
             continue
-
-    return ads
+    
+    return parsed_ads

@@ -1,0 +1,50 @@
+I want to make an API call to https://api.scrapecreators.com/v1/google/company/ads. 
+
+  Please help me write code to make this API call and handle the response appropriately. Include error handling and best practices.
+
+  Here are the details:
+  
+  Endpoint: GET https://api.scrapecreators.com/v1/google/company/ads
+  
+  Description: Get the ads for a company. *This only gets the public ads. Some ads you need to log in for and sadly we can't get those. 
+  
+  Required Headers:
+  - x-api-key: Your API key
+  
+  Parameters:
+  - domain (string): The domain of the company
+- advertiser_id (string): The advertiser id of the company
+- topic (select): The topic to search for. If you search for 'political', you will also need to pass a 'region', like 'US' or 'AU'
+- region (string): The region to search for. Defaults to anywhere
+- cursor (string): Cursor to paginate through results
+  
+  Example Response:
+  {
+  "ads": [
+    {
+      "advertiserId": "AR01614014350098432001",
+      "creativeId": "CR10449491775734153217",
+      "format": "text",
+      "adUrl": "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR10449491775734153217",
+      "advertiserName": "Lululemon Athletica Canada Inc.",
+      "domain": "lululemon.com",
+      "firstShown": "2023-12-29T21:59:16.000Z",
+      "lastShown": "2025-03-28T01:46:12.000Z"
+    },
+    {
+      "advertiserId": "AR01614014350098432001",
+      "creativeId": "CR08077733302133325825",
+      "format": "video",
+      "adUrl": "https://adstransparency.google.com/advertiser/AR01614014350098432001/creative/CR08077733302133325825",
+      "advertiserName": "Lululemon Athletica Canada Inc.",
+      "domain": "lululemon.com",
+      "firstShown": "2025-02-03T19:49:57.000Z",
+      "lastShown": "2025-03-28T01:43:03.000Z"
+    }
+  ],
+  "cursor": "CgoAP7znOo9RPjf%2FEhD5utgx8m75NrTTbU0AAAAAGgn8%2BJyW%2BJQK40A%3D",
+  "success": true,
+  "statusCode": 200
+}
+  
+  

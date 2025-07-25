@@ -1,5 +1,5 @@
 from mcp.server.fastmcp import FastMCP
-from src.services.scrapecreators_service import get_platform_id, get_ads, get_scrapecreators_api_key
+from src.services.scrapecreators_service import get_ads, get_ad_details, get_scrapecreators_api_key
 from src.services.media_cache_service import media_cache, image_cache  # Keep image_cache for backward compatibility
 from src.services.gemini_service import configure_gemini, upload_video_to_gemini, analyze_video_with_gemini, cleanup_gemini_file
 from typing import Dict, Any, List, Optional
@@ -32,223 +32,205 @@ mcp = FastMCP(
 
 
 @mcp.tool(
-  description="Search for companies or brands in the Meta Ad Library and return their platform IDs. Use this tool when you need to find a brand's Meta Platform ID before retrieving their ads. This tool searches the Facebook Ad Library to find matching brands and their associated Meta Platform IDs for ad retrieval.",
+  description="Retrieve currently running ads for a company from Google Ads Transparency Center. Use this tool to get ads for a company using their domain (e.g., 'nike.com') or advertiser ID. You can filter by topic (including political ads) and region. For complete analysis of visual elements, colors, design, or image content, you MUST also use analyze_ad_image on the imageUrl from each ad's details.",
   annotations={
-    "title": "Search Meta Ad Library Brands",
+    "title": "Get Google Ads for Company",
     "readOnlyHint": True,
     "openWorldHint": True
   }
 )
-def get_meta_platform_id(brand_name: str) -> Dict[str, Any]:
-    """Search for companies/brands in the Meta Ad Library and return their platform IDs.
-    
-    This endpoint searches the Facebook Ad Library for companies matching the provided name.
-    It returns a list of matching brands with their Meta Platform IDs, which can then be used
-    to retrieve their current advertisements.
-    
-    Args:
-        brand_name: The name of the company or brand to search for in the Meta Ad Library.
-                   This should be the exact or close match to the brand name as it appears on Meta.
-                   Examples: "Nike", "Coca-Cola", "Apple"
-    
-    Returns:
-        A dictionary containing:
-        - success: Boolean indicating if the search was successful
-        - message: Status message describing the result
-        - platform_ids: Dictionary mapping brand names to their Meta Platform IDs (if found)
-        - total_results: Number of matching brands found
-        - error: Error details if the search failed
-    """
-    if not brand_name or not brand_name.strip():
-        return {
-            "success": False, 
-            "message": "Brand name must be provided and cannot be empty.",
-            "platform_ids": {},
-            "total_results": 0,
-            "error": "Missing or empty brand name"
-        }
-    
-    try:
-        # Get API key first
-        get_scrapecreators_api_key()
-        
-        # Search for platform IDs
-        platform_ids = get_platform_id(brand_name.strip())
-        
-        if not platform_ids:
-            return {
-                "success": True,
-                "message": f"No brands found matching '{brand_name}' in the Meta Ad Library. Try a different search term or check the spelling.",
-                "platform_ids": {},
-                "total_results": 0,
-                "error": None
-            }
-        
-        return {
-            "success": True,
-            "message": f"Found {len(platform_ids)} matching brand(s) for '{brand_name}' in the Meta Ad Library.",
-            "platform_ids": platform_ids,
-            "total_results": len(platform_ids),
-            "ad_library_search_url": "https://www.facebook.com/ads/library/",
-            "source_citation": f"[Facebook Ad Library Search](https://www.facebook.com/ads/library/)",
-            "error": None
-        }
-        
-    except requests.exceptions.RequestException as e:
-        return {
-            "success": False,
-            "message": f"Network error while searching for brand '{brand_name}': {str(e)}",
-            "platform_ids": {},
-            "total_results": 0,
-            "error": f"Network error: {str(e)}"
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "message": f"Failed to search for brand '{brand_name}': {str(e)}",
-            "platform_ids": {},
-            "total_results": 0,
-            "error": str(e)
-        }
-
-
-@mcp.tool(
-  description="Retrieve currently running ads for a brand using their Meta Platform ID. Use this tool after getting a platform ID from get_meta_platform_id. This tool fetches active advertisements from the Meta Ad Library, including ad content, media URLs, dates, and targeting information. For complete analysis of visual elements, colors, design, or image content, you MUST also use analyze_ad_image on the media_url from each ad.",
-  annotations={
-    "title": "Get Meta Ad Library Ads",
-    "readOnlyHint": True,
-    "openWorldHint": True
-  }
-)
-def get_meta_ads(
-    platform_id: str, 
+def get_google_ads(
+    domain: Optional[str] = None,
+    advertiser_id: Optional[str] = None,
+    topic: Optional[str] = None,
+    region: Optional[str] = None,
     limit: Optional[int] = 50,
-    country: Optional[str] = None,
-    trim: Optional[bool] = True
+    cursor: Optional[str] = None
 ) -> Dict[str, Any]:
-    """Retrieve currently running ads for a brand using their Meta Platform ID.
+    """Retrieve currently running ads for a company from Google Ads Transparency Center.
     
-    This endpoint fetches active advertisements from the Meta Ad Library for the specified platform.
-    It supports pagination and can filter results by country. The response includes ad content,
-    media URLs, start/end dates, and other metadata.
+    This endpoint fetches active advertisements from Google Ads Transparency Center for the specified company.
+    You must provide either a domain or advertiser_id. It supports pagination and filtering by topic and region.
     
     Args:
-        platform_id: The Meta Platform ID for the brand (obtained from get_meta_platform_id).
-                    This should be a valid platform ID string.
-        limit: Maximum number of ads to retrieve (default: 50, max: 500).
-               Higher limits allow comprehensive brand analysis but may take longer to process.
-        country: Optional country code to filter ads by geographic targeting.
-                 Examples: "US", "CA", "GB", "AU". If not provided, returns ads from all countries.
-        trim: Whether to trim the response to essential fields only (default: True).
-              Set to False to get full ad metadata including targeting details.
+        domain: The domain of the company (e.g., "lululemon.com", "nike.com").
+        advertiser_id: The Google advertiser ID (e.g., "AR01614014350098432001").
+        topic: Optional topic filter (e.g., "political"). If "political", region is required.
+        region: Optional region code (e.g., "US", "CA", "GB"). Required for political ads.
+        limit: Maximum number of ads to retrieve (default: 50).
+        cursor: Pagination cursor from previous response.
     
     Returns:
         A dictionary containing:
         - success: Boolean indicating if the ads were retrieved successfully
         - message: Status message describing the result
-        - ads: List of ad objects with details like ad_id, media_url, body, dates, targeting
-        - count: Number of ads found and returned
-        - total_available: Estimated total number of ads available (if pagination info available)
-        - has_more: Boolean indicating if more ads are available via pagination
-        - cursor: Pagination cursor for retrieving additional ads (if available)
+        - ads: List of ad objects with advertiserId, creativeId, format, adUrl, etc.
+        - cursor: Pagination cursor for retrieving additional ads
+        - statusCode: HTTP status code from the API
         - error: Error details if the retrieval failed
     """
-    if not platform_id or not platform_id.strip():
+    if not domain and not advertiser_id:
         return {
             "success": False,
-            "message": "Platform ID must be provided and cannot be empty.",
+            "message": "Either domain or advertiser_id must be provided.",
             "ads": [],
-            "count": 0,
-            "total_available": 0,
-            "has_more": False,
             "cursor": None,
-            "error": "Missing or empty platform ID"
+            "statusCode": 400,
+            "error": "Missing required parameter: domain or advertiser_id"
         }
     
-    # Validate limit parameter
-    if limit is not None:
-        if not isinstance(limit, int) or limit <= 0:
-            return {
-                "success": False,
-                "message": "Limit must be a positive integer.",
-                "ads": [],
-                "count": 0,
-                "total_available": 0,
-                "has_more": False,
-                "cursor": None,
-                "error": "Invalid limit parameter"
-            }
-        if limit > 500:
-            limit = 500  # Cap at 500 for reasonable performance
-    
-    # Validate country parameter
-    if country is not None:
-        if not isinstance(country, str) or len(country) != 2:
-            return {
-                "success": False,
-                "message": "Country must be a valid 2-letter country code (e.g., 'US', 'CA').",
-                "ads": [],
-                "count": 0,
-                "total_available": 0,
-                "has_more": False,
-                "cursor": None,
-                "error": "Invalid country code format"
-            }
-        country = country.upper()
+    if topic == "political" and not region:
+        return {
+            "success": False,
+            "message": "Region is required when searching for political ads.",
+            "ads": [],
+            "cursor": None,
+            "statusCode": 400,
+            "error": "Missing required parameter: region (required for political topic)"
+        }
     
     try:
         # Get API key first
         get_scrapecreators_api_key()
         
-        # Fetch ads with enhanced parameters
-        ads = get_ads(platform_id.strip(), limit or 50, country, trim)
+        # Fetch ads
+        result = get_ads(
+            domain=domain,
+            advertiser_id=advertiser_id,
+            topic=topic,
+            region=region,
+            limit=limit or 50,
+            cursor=cursor
+        )
+        
+        ads = result.get('ads', [])
         
         if not ads:
+            identifier = domain or advertiser_id
             return {
                 "success": True,
-                "message": f"No current ads found for platform ID '{platform_id}' in the Meta Ad Library.",
+                "message": f"No current ads found for '{identifier}' in Google Ads Transparency Center.",
                 "ads": [],
-                "count": 0,
-                "total_available": 0,
-                "has_more": False,
                 "cursor": None,
+                "statusCode": result.get('statusCode', 200),
                 "error": None
             }
         
+        identifier = domain or advertiser_id
         return {
             "success": True,
-            "message": f"Successfully retrieved {len(ads)} ads for platform ID '{platform_id}' from the Meta Ad Library.",
+            "message": f"Successfully retrieved {len(ads)} ads for '{identifier}' from Google Ads Transparency Center.",
             "ads": ads,
-            "count": len(ads),
-            "total_available": len(ads),  # This would be updated with actual pagination info
-            "has_more": False,  # This would be updated based on cursor availability
-            "cursor": None,  # This would be updated with actual cursor from API
-            "platform_id": platform_id,
-            "ad_library_url": "https://www.facebook.com/ads/library/",
-            "source_citation": f"[Facebook Ad Library - Platform ID: {platform_id}](https://www.facebook.com/ads/library/)",
+            "cursor": result.get('cursor'),
+            "statusCode": result.get('statusCode', 200),
+            "ad_transparency_url": "https://adstransparency.google.com/",
+            "source_citation": f"[Google Ads Transparency Center - {identifier}](https://adstransparency.google.com/)",
             "error": None
         }
         
     except requests.exceptions.RequestException as e:
         return {
             "success": False,
-            "message": f"Network error while retrieving ads for platform ID '{platform_id}': {str(e)}",
+            "message": f"Network error while retrieving ads: {str(e)}",
             "ads": [],
-            "count": 0,
-            "total_available": 0,
-            "has_more": False,
             "cursor": None,
+            "statusCode": 500,
             "error": f"Network error: {str(e)}"
         }
     except Exception as e:
         return {
             "success": False,
-            "message": f"Failed to retrieve ads for platform ID '{platform_id}': {str(e)}",
+            "message": f"Failed to retrieve ads: {str(e)}",
             "ads": [],
-            "count": 0,
-            "total_available": 0,
-            "has_more": False,
             "cursor": None,
+            "statusCode": 500,
+            "error": str(e)
+        }
+
+
+@mcp.tool(
+  description="Get detailed information about a specific Google ad including variations, regional stats, and impressions. Use this tool with the adUrl from get_google_ads to retrieve full ad details including all text variations, image URLs, headlines, and descriptions. Essential for analyzing ad content and extracting media URLs for visual analysis.",
+  annotations={
+    "title": "Get Google Ad Details",
+    "readOnlyHint": True,
+    "openWorldHint": True
+  }
+)
+def get_google_ad_details(ad_url: str) -> Dict[str, Any]:
+    """Get detailed information about a specific Google ad.
+    
+    This endpoint retrieves comprehensive details about a specific ad from Google Ads Transparency Center,
+    including all variations, regional statistics, and impression data. The ad_url should be obtained
+    from the get_google_ads tool.
+    
+    Args:
+        ad_url: The URL of the ad from Google Ads Transparency Center.
+                Example: "https://adstransparency.google.com/advertiser/AR.../creative/CR..."
+    
+    Returns:
+        A dictionary containing:
+        - success: Boolean indicating if the details were retrieved successfully
+        - advertiserId: The advertiser's ID
+        - creativeId: The creative's ID
+        - format: Ad format (text, image, video)
+        - firstShown: When the ad was first shown
+        - lastShown: When the ad was last shown
+        - variations: List of ad variations with headlines, descriptions, and image URLs
+        - creativeRegions: List of regions where the ad is shown
+        - regionStats: Detailed statistics by region
+        - error: Error details if the retrieval failed
+    """
+    if not ad_url or not ad_url.strip():
+        return {
+            "success": False,
+            "message": "Ad URL must be provided and cannot be empty.",
+            "error": "Missing or empty ad URL"
+        }
+    
+    try:
+        # Get API key first
+        get_scrapecreators_api_key()
+        
+        # Fetch ad details
+        details = get_ad_details(ad_url.strip())
+        
+        # Extract key information for easier access
+        result = {
+            "success": details.get('success', False),
+            "advertiserId": details.get('advertiserId'),
+            "creativeId": details.get('creativeId'),
+            "format": details.get('format'),
+            "firstShown": details.get('firstShown'),
+            "lastShown": details.get('lastShown'),
+            "overallImpressions": details.get('overallImpressions'),
+            "creativeRegions": details.get('creativeRegions', []),
+            "regionStats": details.get('regionStats', []),
+            "variations": details.get('variations', []),
+            "ad_url": ad_url,
+            "ad_transparency_url": "https://adstransparency.google.com/",
+            "source_citation": f"[Google Ad Details]({ad_url})",
+            "error": None
+        }
+        
+        # Add message based on variations found
+        variations_count = len(result.get('variations', []))
+        if variations_count > 0:
+            result["message"] = f"Successfully retrieved ad details with {variations_count} variation(s)."
+        else:
+            result["message"] = "Ad details retrieved but no variations found."
+        
+        return result
+        
+    except requests.exceptions.RequestException as e:
+        return {
+            "success": False,
+            "message": f"Network error while retrieving ad details: {str(e)}",
+            "error": f"Network error: {str(e)}"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "message": f"Failed to retrieve ad details: {str(e)}",
             "error": str(e)
         }
 
@@ -728,8 +710,8 @@ def analyze_ad_video(media_url: str, brand_name: Optional[str] = None, ad_id: Op
                     "ad_id": cached_data.get('ad_id'),
                     "duration_seconds": cached_data.get('duration_seconds')
                 },
-                "ad_library_url": "https://www.facebook.com/ads/library/",
-                "source_citation": f"[Facebook Ad Library - {brand_name if brand_name else 'Ad'} #{ad_id if ad_id else 'Unknown'}]({media_url})",
+                "ad_transparency_url": "https://adstransparency.google.com/",
+                "source_citation": f"[Google Ads Transparency Center - {brand_name if brand_name else 'Ad'} #{ad_id if ad_id else 'Unknown'}]({media_url})",
                 "error": None
             }
         
@@ -883,8 +865,8 @@ Provide detailed, factual observations that would help understand the video's ma
                 "brand_name": brand_name,
                 "ad_id": ad_id,
                 "cache_status": "Used cached video" if cached_data else "Downloaded and cached new video",
-                "ad_library_url": "https://www.facebook.com/ads/library/",
-                "source_citation": f"[Facebook Ad Library - {brand_name if brand_name else 'Ad'} #{ad_id if ad_id else 'Unknown'}]({media_url})",
+                "ad_transparency_url": "https://adstransparency.google.com/",
+                "source_citation": f"[Google Ads Transparency Center - {brand_name if brand_name else 'Ad'} #{ad_id if ad_id else 'Unknown'}]({media_url})",
                 "error": None
             }
             
