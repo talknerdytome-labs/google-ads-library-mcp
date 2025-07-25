@@ -1,8 +1,8 @@
-# Facebook Ads Library MCP Server
+# Google Ads Library MCP Server
 
-This is a Model Context Protocol (MCP) server for the Facebook Ads Library.
+This is a Model Context Protocol (MCP) server for the Google Ads Transparency Center.
 
-With this you can search Facebook's public ads library for any company or brand, see what they're currently running and analyze their advertising. You can analyze ad images/text, analyze video ads with comprehensive insights, compare companies' strategies, and get insights into what's working in their campaigns.
+With this you can search Google's public ads transparency center for any company or brand, see what they're currently running and analyze their advertising. You can analyze ad images/text, analyze video ads with comprehensive insights, compare companies' strategies, and get insights into what's working in their campaigns.
 
 Here's an example of what you can do when it's connected to Claude.
 
@@ -108,10 +108,10 @@ If you prefer to install manually:
    ```json
    {
      "mcpServers": {
-       "fb_ad_library": {
-         "command": "python",
+       "google_ad_library": {
+       "command": "/usr/local/opt/python@3.13/bin/python3",
          "args": [
-           "{{PATH_TO_PROJECT}}/facebook-ads-library-mcp/mcp_server.py"
+           "{{PATH_TO_PROJECT}}/google-ads-library-mcp/mcp_server.py"
          ]
        }
      }
@@ -120,7 +120,7 @@ If you prefer to install manually:
 
    Replace `{{PATH_TO_PROJECT}}` with the full path to where you cloned this repository.
 
-   **Note:** API keys are now automatically loaded from the `.env` file, so you don't need to pass them as command line arguments.
+   **Note:** API keys are automatically loaded from the `.env` file. Command line arguments are still supported and take priority over environment variables if provided.
 
    **For Claude Desktop:**
    
@@ -140,7 +140,7 @@ If you prefer to install manually:
 
 5. **Restart Claude Desktop / Cursor**
    
-   Open Claude Desktop and you should now see the Facebook Ads Library as an available integration.
+   Open Claude Desktop and you should now see the Google Ads Library as an available integration.
 
    Or restart Cursor.
 
@@ -152,27 +152,33 @@ If you prefer to install manually:
 2. The MCP server queries the ScrapeCreators API for Google Ads Transparency Center data
 3. Data flows back through the chain to Claude
 
-### Google Ads vs Facebook Ads
+### Google Ads
 
-This server now connects to Google's Ads Transparency Center instead of Facebook's Ad Library:
+This server connects to Google's Ads Transparency Center:
 - **Google Ads**: Uses company domain (e.g., "nike.com") or advertiser ID for search
 - **Response Format**: Returns ads with format types (text/image/video) and detailed variations
 - **Ad Details**: Each ad can have multiple variations with different headlines and descriptions
 - **Regional Data**: Includes region-specific statistics and impression data
 
+Tips:
+
+- Use company domains (e.g., "nike.com") instead of brand names for searching
+- Text ads are now supported in addition to image and video ads
+- Each ad may have multiple variations with different headlines and descriptions
+
 ### Available MCP Tools
 
-This MCP server provides tools for interacting with Facebook Ads library objects:
+This MCP server provides tools for interacting with Google Ads Transparency Center objects:
 
 | Tool Name              | Description                                        |
 | ---------------------- | -------------------------------------------------- |
-| `get_meta_platform_id` | Returns platform ID given one or many brand names |
-| `get_meta_ads`         | Retrieves ads for a specific page (platform ID)   |
-| `analyze_ad_image`     | Analyzes ad images for visual elements, text, colors, and composition |
-| `analyze_ad_video`     | Analyzes ad videos using Gemini AI for comprehensive video insights |
-| `get_cache_stats`      | Gets statistics about cached media (images and videos) and storage usage |
-| `search_cached_media`  | Searches previously analyzed media by brand, colors, people, or media type |
-| `cleanup_media_cache`  | Cleans up old cached media files to free disk space |
+| `get_google_ads`          | Retrieves currently running ads for a company from Google Ads Transparency Center (by domain or advertiser ID) |
+| `get_google_ad_details`   | Gets detailed information about a specific Google ad, including all variations and regional stats |
+| `analyze_ad_image`        | Downloads and analyzes ad images for visual elements, text, colors, and composition |
+| `analyze_ad_video`        | Downloads and analyzes ad videos using Gemini AI for comprehensive video insights |
+| `get_cache_stats`         | Gets statistics about cached media (images and videos) and storage usage      |
+| `search_cached_media`     | Searches previously analyzed media by brand, colors, people, or media type    |
+| `cleanup_media_cache`     | Cleans up old cached media files to free disk space                           |
 
 ---
 
@@ -199,7 +205,6 @@ This MCP server provides tools for interacting with Facebook Ads library objects
 For additional Claude Desktop integration troubleshooting, see the [MCP documentation](https://modelcontextprotocol.io/quickstart/server#claude-for-desktop-integration-issues). The documentation includes helpful tips for checking logs and resolving common issues.
 
 **Google Ads Specific Notes:**
-- The server now searches Google Ads Transparency Center instead of Facebook
 - Use company domains (e.g., "nike.com") instead of brand names for searching
 - Text ads are now supported in addition to image and video ads
 - Each ad may have multiple variations with different headlines and descriptions
@@ -208,7 +213,7 @@ For additional Claude Desktop integration troubleshooting, see the [MCP document
 
 ## Feedback
 
-Your feedback will be massively appreciated. Please [tell us](mailto:feedback@usegala.com) which features on that list you like to see next or request entirely new ones.
+Your feedback will be massively appreciated. Please [tell us](mailto:tanmay@usegala.com) which features on that list you like to see next or request entirely new ones.
 
 ---
 

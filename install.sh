@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# Facebook Ads Library MCP Server Installation Script
+# Google Ads Library MCP Server Installation Script
 # This script automates the setup process for the MCP server
 
 set -e  # Exit on any error
 
-echo "🚀 Facebook Ads Library MCP Server Installation"
+echo "🚀 Google Ads Library MCP Server Installation"
 echo "==============================================="
 echo
 
@@ -115,7 +115,7 @@ echo "2. 📋 Copy the MCP configuration above to your Claude Desktop or Cursor 
 echo
 echo "3. 🔄 Restart Claude Desktop or Cursor"
 echo
-echo "4. 🎉 You're ready to use the Facebook Ads Library MCP server!"
+echo "4. 🎉 You're ready to use the Google Ads Library MCP server!"
 echo
 echo "💡 Need help? Check the README.md file for troubleshooting tips."
 echo

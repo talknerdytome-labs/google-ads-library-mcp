@@ -14,19 +14,20 @@ load_dotenv()
 
 
 INSTRUCTIONS = """
-This server provides access to Meta's Ad Library data through the ScrapeCreators API.
+This server provides access to Google's Ads Transparency Center data through the ScrapeCreators API.
 It allows you to search for companies/brands and retrieve their currently running advertisements.
 
 Workflow:
-1. Use get_meta_platform_id to search for a brand and get their Meta Platform ID
-2. Use get_meta_ads to retrieve the brand's current ads using the platform ID
+1. Use get_google_ads to search for ads by company domain or advertiser ID
+2. Use get_google_ad_details to get detailed information about specific ads
+3. Use analyze_ad_image/analyze_ad_video for comprehensive media analysis
 
-The API provides real-time access to Facebook Ad Library data including ad content, media, dates, and targeting information.
+The API provides real-time access to Google Ads Transparency Center data including ad content, media, dates, and targeting information.
 """
 
 
 mcp = FastMCP(
-   name="Meta Ads Library",
+   name="Google Ads Library",
    instructions=INSTRUCTIONS
 )
 
@@ -236,7 +237,7 @@ def get_google_ad_details(ad_url: str) -> Dict[str, Any]:
 
 
 @mcp.tool(
-  description="REQUIRED for analyzing images from Facebook ads. Download and analyze ad images to extract visual elements, text content, colors, people, brand elements, and composition details. This tool should be used for EVERY image URL returned by get_meta_ads when doing comprehensive analysis. Uses intelligent caching so multiple image analysis calls are efficient and cost-free.",
+  description="REQUIRED for analyzing images from Google ads. Download and analyze ad images to extract visual elements, text content, colors, people, brand elements, and composition details. This tool should be used for EVERY image URL returned by get_google_ads when doing comprehensive analysis. Uses intelligent caching so multiple image analysis calls are efficient and cost-free.",
   annotations={
     "title": "Analyze Ad Image Content",
     "readOnlyHint": True,
@@ -244,15 +245,15 @@ def get_google_ad_details(ad_url: str) -> Dict[str, Any]:
   }
 )
 def analyze_ad_image(media_url: str, brand_name: Optional[str] = None, ad_id: Optional[str] = None) -> Dict[str, Any]:
-    """Download Facebook ad images and prepare them for visual analysis by Claude Desktop.
+    """Download Google ad images and prepare them for visual analysis by Claude Desktop.
     
-    This tool downloads images from Facebook Ad Library URLs and provides them in a format
+    This tool downloads images from Google Ads Transparency Center URLs and provides them in a format
     that Claude Desktop can analyze using its vision capabilities. Images are cached locally
     to avoid re-downloading. The tool provides detailed analysis instructions to ensure
     comprehensive, objective visual analysis.
     
     Args:
-        media_url: The direct URL to the Facebook ad image to analyze.
+        media_url: The direct URL to the Google ad image to analyze.
         brand_name: Optional brand name for cache organization.
         ad_id: Optional ad ID for tracking purposes.
     
@@ -349,7 +350,7 @@ def analyze_ad_image(media_url: str, brand_name: Optional[str] = None, ad_id: Op
         
         # Construct comprehensive analysis prompt - let Claude Desktop control presentation
         analysis_prompt = """
-Analyze this Facebook ad image and extract ALL factual information about:
+Analyze this Google ad image and extract ALL factual information about:
 
 **Overall Visual Description:**
 - Complete description of what is shown in the image
@@ -412,8 +413,8 @@ Extract ALL this information comprehensively. The presentation format (summary v
             "brand_name": brand_name,
             "ad_id": ad_id,
             "analysis_instructions": analysis_prompt,
-            "ad_library_url": "https://www.facebook.com/ads/library/",
-            "source_citation": f"[Facebook Ad Library - {brand_name if brand_name else 'Ad'} #{ad_id if ad_id else 'Unknown'}]({media_url})",
+            "ad_library_url": "https://adstransparency.google.com/",
+            "source_citation": f"[Google Ads Transparency Center - {brand_name if brand_name else 'Ad'} #{ad_id if ad_id else 'Unknown'}]({media_url})",
             "error": None
         }
         
@@ -650,7 +651,7 @@ cleanup_image_cache = cleanup_media_cache
 
 
 @mcp.tool(
-  description="REQUIRED for analyzing video ads from Facebook. Download and analyze ad videos using Gemini's advanced video understanding capabilities. Extracts visual storytelling, audio elements, pacing, scene transitions, brand messaging, and marketing strategy insights. Uses intelligent caching for efficiency and includes comprehensive video analysis.",
+  description="REQUIRED for analyzing video ads from Google. Download and analyze ad videos using Gemini's advanced video understanding capabilities. Extracts visual storytelling, audio elements, pacing, scene transitions, brand messaging, and marketing strategy insights. Uses intelligent caching for efficiency and includes comprehensive video analysis.",
   annotations={
     "title": "Analyze Ad Video Content",
     "readOnlyHint": True,
@@ -658,14 +659,14 @@ cleanup_image_cache = cleanup_media_cache
   }
 )
 def analyze_ad_video(media_url: str, brand_name: Optional[str] = None, ad_id: Optional[str] = None) -> Dict[str, Any]:
-    """Download Facebook ad videos and analyze them using Gemini's video understanding capabilities.
+    """Download Google ad videos and analyze them using Gemini's video understanding capabilities.
     
-    This tool downloads videos from Facebook Ad Library URLs and provides comprehensive analysis
+    This tool downloads videos from Google Ads Transparency Center URLs and provides comprehensive analysis
     using Google's Gemini AI model. Videos are cached locally to avoid re-downloading, and 
     analysis results are cached to improve performance and reduce API costs.
     
     Args:
-        media_url: The direct URL to the Facebook ad video to analyze.
+        media_url: The direct URL to the Google ad video to analyze.
         brand_name: Optional brand name for cache organization.
         ad_id: Optional ad ID for tracking purposes.
     
@@ -770,7 +771,7 @@ def analyze_ad_video(media_url: str, brand_name: Optional[str] = None, ad_id: Op
         
         # Create structured video analysis prompt based on user requirements
         analysis_prompt = """
-Analyze this Facebook ad video and provide a comprehensive, structured breakdown following this exact format:
+Analyze this Google ad video and provide a comprehensive, structured breakdown following this exact format:
 
 **SCENE ANALYSIS:**
 Analyze the video at a scene-by-scene level. For each identified scene, provide:

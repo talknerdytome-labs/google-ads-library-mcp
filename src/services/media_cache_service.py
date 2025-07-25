@@ -10,7 +10,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Cache configuration
-CACHE_DIR = Path.home() / ".cache" / "facebook-ads-mcp"
+CACHE_DIR = Path.home() / ".cache" / "google-ads-mcp"
 CACHE_DB_PATH = CACHE_DIR / "media_cache.db"
 CACHE_IMAGES_DIR = CACHE_DIR / "images"
 CACHE_VIDEOS_DIR = CACHE_DIR / "videos"
