@@ -43,7 +43,7 @@ Do a deep comparison to the messaging between 'AnthropicAI', 'Perplexity AI' and
 - Python 3.12+
 - Anthropic Claude Desktop app (or Cursor)
 - Pip (Python package manager), install with `python -m pip install`
-- An access token for [Scrape Creators](https://scrapecreators.com/)
+- An access token for [Scrape Creators](https://scrapecreators.com/?via=tntm)
 - A Google Gemini API key for video analysis (optional, only needed for video ads)
 
 ### Quick Install (Recommended)
@@ -64,7 +64,7 @@ Do a deep comparison to the messaging between 'AnthropicAI', 'Perplexity AI' and
 2. **Configure your API keys**
 
    Edit the `.env` file that was created and add your API keys:
-   - Get your ScrapeCreators API key at [scrapecreators.com](https://scrapecreators.com/)
+   - Get your ScrapeCreators API key at [scrapecreators.com](https://scrapecreators.com/?via=tntm)
    - Get your Gemini API key at [Google AI Studio](https://aistudio.google.com/app/apikey) (optional, for video analysis)
 
 3. **Follow the displayed MCP configuration**
@@ -98,7 +98,7 @@ If you prefer to install manually:
    ```
 
    **To obtain API keys:**
-   - Sign up for Scrape Creators [here](https://scrapecreators.com/)
+   - Sign up for Scrape Creators [here](https://scrapecreators.com/?via=tntm)
    - Get a Google Gemini API key [here](https://aistudio.google.com/app/apikey) (optional, for video analysis)
 
 4. **Connect to the MCP server**
